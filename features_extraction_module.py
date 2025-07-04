@@ -1,46 +1,28 @@
-import os
-import matplotlib.pyplot as plt
-import pandas as pd
+
 import numpy as np
+import librosa
+import os
 
-def extract_extra_features(audio_file_path):
-    import librosa
-    y, sr = librosa.load(audio_file_path)
-    pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
+def extract_extra_features(file_path):
+    try:
+        y, sr = librosa.load(file_path, sr=None)
 
-    # נאסוף את התדר עם המגניטודה הכי גבוהה בכל פריים
-    pitch_values = []
+        # Use pyin to extract F0 (pitch) values
+        f0, voiced_flag, voiced_probs = librosa.pyin(
+            y, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C7'), sr=sr)
 
-    for t in range(pitches.shape[1]):
-        index = magnitudes[:, t].argmax()
-        pitch = pitches[index, t]
-        if pitch > 0:
-            pitch_values.append(pitch)
+        f0 = f0[~np.isnan(f0)]
+        pitch_variability = np.std(f0) if len(f0) > 0 else 0
+        pitch_change_rate = np.mean(np.abs(np.diff(f0))) if len(f0) > 1 else 0
 
-    pitch_values = np.array(pitch_values)
-    pitch_variability = np.std(pitch_values)
-    pitch_change_rate = np.mean(np.abs(np.diff(pitch_values)))
+        return {
+            'pitch_variability': float(pitch_variability),
+            'pitch_change_rate': float(pitch_change_rate),
+        }
 
-    return {
-        'pitch_variability': float(pitch_variability),
-        'pitch_change_rate': float(pitch_change_rate),
-    }
-
-
-def generate_expressiveness_plot(pitch_val, reference_df):
-    fig, ax = plt.subplots()
-    ax.scatter(reference_df['pitch_variability'], reference_df['Expressiveness'], color='orange')
-    ax.axvline(x=pitch_val, color='red', linestyle='--')
-    ax.set_xlabel("pitch_variability")
-    ax.set_ylabel("Expressiveness")
-    ax.set_title("Expressiveness vs pitch_variability")
-    return fig
-
-def generate_clarity_plot(pitch_change_val, reference_df):
-    fig, ax = plt.subplots()
-    ax.scatter(reference_df['pitch_change_rate'], reference_df['Clarity'], color='orange')
-    ax.axvline(x=pitch_change_val, color='red', linestyle='--')
-    ax.set_xlabel("pitch_change_rate")
-    ax.set_ylabel("Clarity")
-    ax.set_title("Clarity vs pitch_change_rate")
-    return fig
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        return {
+            'pitch_variability': 0,
+            'pitch_change_rate': 0
+        }
