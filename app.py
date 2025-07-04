@@ -1,47 +1,67 @@
+
+from flask import Flask, request, render_template, jsonify
 import os
-from flask import Flask, request, render_template, send_from_directory
-from features_extraction_module import extract_extra_features, generate_expressiveness_plot, generate_clarity_plot
-import pandas as pd
+import librosa
+import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+import uuid
 
 app = Flask(__name__)
-UPLOAD_FOLDER = "uploads"
-PLOTS_FOLDER = "plots"
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["PLOTS_FOLDER"] = PLOTS_FOLDER
-
+UPLOAD_FOLDER = 'uploads'
+PLOTS_FOLDER = 'static/plots'
+REFERENCE_PATH = 'reference_dataset.csv'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PLOTS_FOLDER, exist_ok=True)
 
-reference_df = pd.read_csv("reference_dataset.csv")
+def extract_features(audio_path):
+    y, sr = librosa.load(audio_path)
+    pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
+    pitch_values = pitches[magnitudes > np.median(magnitudes)]
+    pitch_variability = np.std(pitch_values)
+    pitch_diff = np.diff(pitch_values)
+    pitch_change_rate = np.mean(np.abs(pitch_diff))
+    return pitch_variability, pitch_change_rate
 
-@app.route("/")
+def create_scatter(reference_df, x_col, y_col, label, new_x, output_path):
+    fig, ax = plt.subplots()
+    ax.scatter(reference_df[x_col], reference_df[y_col], color='orange')
+    ax.axvline(new_x, color='red', linestyle='--')
+    ax.set_xlabel(x_col)
+    ax.set_ylabel(y_col)
+    ax.set_title(f"{label} vs {x_col}")
+    plt.tight_layout()
+    fig.savefig(output_path)
+    plt.close(fig)
+
+@app.route('/')
 def index():
-    return render_template("upload_interface.html")
+    return render_template('index.html')
 
-@app.route("/analyze", methods=["POST"])
+@app.route('/analyze', methods=['POST'])
 def analyze():
-    if "file" not in request.files:
-        return "Error: No file uploaded", 400
-    file = request.files["file"]
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-    file.save(filepath)
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
 
-    pitch_var, pitch_rate = extract_extra_features(filepath)
+    file_id = str(uuid.uuid4())[:6]
+    file_path = os.path.join(UPLOAD_FOLDER, file_id + "_" + file.filename)
+    file.save(file_path)
 
-    expressiveness_filename = generate_expressiveness_plot(pitch_var, reference_df)
-    clarity_filename = generate_clarity_plot(pitch_rate, reference_df)
+    pitch_var, pitch_change = extract_features(file_path)
+    reference_df = pd.read_csv(REFERENCE_PATH)
 
-    return render_template("upload_interface.html",
-                           pitch_var=round(pitch_var, 3),
-                           pitch_rate=round(pitch_rate, 3),
-                           expressiveness_plot=expressiveness_filename,
-                           clarity_plot=clarity_filename)
+    expr_path = os.path.join(PLOTS_FOLDER, f"expressiveness_{file_id}.png")
+    clar_path = os.path.join(PLOTS_FOLDER, f"clarity_{file_id}.png")
+    create_scatter(reference_df, 'pitch_variability', 'Expressiveness', 'Expressiveness', pitch_var, expr_path)
+    create_scatter(reference_df, 'pitch_change_rate', 'Clarity', 'Clarity', pitch_change, clar_path)
 
-@app.route("/plots/<filename>")
-def plot_file(filename):
-    return send_from_directory(app.config["PLOTS_FOLDER"], filename)
+    return render_template('index.html', pitch_variability=round(pitch_var, 3),
+                           pitch_change_rate=round(pitch_change, 3),
+                           plots={'expressiveness': '/' + expr_path,
+                                  'clarity': '/' + clar_path})
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(debug=True, host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
