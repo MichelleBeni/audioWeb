@@ -1,32 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Storytelling Analysis</title>
+    <title>Storytelling Analyzer</title>
     <style>
         body {
             font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(to bottom, #ffe6f0, #fff0f5);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background: linear-gradient(to bottom right, #ffeef8, #fff0f5);
+            color: #333;
+            text-align: center;
             padding: 40px;
         }
+
         h1 {
-            color: #2c2c2c;
+            font-size: 32px;
+            margin-bottom: 25px;
         }
+
         .upload-box {
             background-color: white;
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            text-align: center;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
+
         input[type="file"] {
             display: none;
         }
-        .custom-file-upload {
-            background-color: #ff6fb5;
+
+        .file-label {
+            background-color: #ff66a3;
             color: white;
             padding: 10px 20px;
             border-radius: 8px;
@@ -34,17 +37,30 @@
             display: inline-block;
             margin-bottom: 10px;
         }
+
+        #file-name {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
         button {
-            background-color: #ff6fb5;
+            background-color: #ff66a3;
             color: white;
             padding: 10px 25px;
             border: none;
             border-radius: 8px;
+            font-size: 16px;
             cursor: pointer;
         }
-        .plots img {
+
+        .results {
+            margin-top: 30px;
+        }
+
+        img {
             max-width: 400px;
-            margin: 15px;
+            margin: 20px;
             border-radius: 10px;
             box-shadow: 0 0 8px rgba(0,0,0,0.15);
         }
@@ -52,32 +68,33 @@
 </head>
 <body>
     <h1>Upload a Storytelling Recording</h1>
+
     <div class="upload-box">
-        <form method="post" enctype="multipart/form-data" action="/analyze">
-            <label for="file-upload" class="custom-file-upload">Choose File</label>
-            <input id="file-upload" type="file" name="file" onchange="updateFilename(this)">
-            <div id="filename"></div>
+        <form action="/analyze" method="post" enctype="multipart/form-data">
+            <label class="file-label" for="file-upload">Choose File</label>
+            <input type="file" id="file-upload" name="file" accept=".wav" required onchange="updateFileName(this)">
+            <div id="file-name">No file selected</div>
             <br>
             <button type="submit">Analyze</button>
         </form>
     </div>
 
-    {% if pitch_var %}
-    <div>
-        <strong>Pitch Variability:</strong> {{ pitch_var }}<br>
-        <strong>Pitch Change Rate:</strong> {{ pitch_rate }}<br>
-    </div>
-    <h3>Scatter Plots:</h3>
-    <div class="plots">
-        <img src="{{ url_for('plot_file', filename=expressiveness_plot) }}" alt="Expressiveness Plot">
-        <img src="{{ url_for('plot_file', filename=clarity_plot) }}" alt="Clarity Plot">
+    {% if pitch_variability %}
+    <div class="results">
+        <p><strong>Pitch Variability:</strong> {{ pitch_variability }}</p>
+        <p><strong>Pitch Change Rate:</strong> {{ pitch_change_rate }}</p>
+        <h3>Scatter Plots</h3>
+        <img src="{{ plots['expressiveness'] }}" alt="Expressiveness Plot">
+        <img src="{{ plots['clarity'] }}" alt="Clarity Plot">
     </div>
     {% endif %}
 
     <script>
-        function updateFilename(input) {
-            document.getElementById('filename').textContent = input.files[0].name;
+        function updateFileName(input) {
+            const fileName = input.files[0] ? input.files[0].name : "No file selected";
+            document.getElementById("file-name").textContent = fileName;
         }
     </script>
 </body>
 </html>
+
