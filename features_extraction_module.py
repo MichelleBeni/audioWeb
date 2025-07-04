@@ -8,7 +8,16 @@ def extract_extra_features(audio_file_path):
     y, sr = librosa.load(audio_file_path)
     pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
 
-    pitch_values = pitches[magnitudes > np.median(magnitudes)]
+    # נאסוף את התדר עם המגניטודה הכי גבוהה בכל פריים
+    pitch_values = []
+
+    for t in range(pitches.shape[1]):
+        index = magnitudes[:, t].argmax()
+        pitch = pitches[index, t]
+        if pitch > 0:
+            pitch_values.append(pitch)
+
+    pitch_values = np.array(pitch_values)
     pitch_variability = np.std(pitch_values)
     pitch_change_rate = np.mean(np.abs(np.diff(pitch_values)))
 
@@ -16,6 +25,7 @@ def extract_extra_features(audio_file_path):
         'pitch_variability': float(pitch_variability),
         'pitch_change_rate': float(pitch_change_rate),
     }
+
 
 def generate_expressiveness_plot(pitch_val, reference_df):
     fig, ax = plt.subplots()
