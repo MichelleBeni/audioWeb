@@ -1,36 +1,34 @@
-import os
-import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import librosa
+import pandas as pd
+import os
+import uuid
 
-def extract_extra_features(audio_file_path):
-    import librosa
-    y, sr = librosa.load(audio_file_path)
+def extract_extra_features(file_path):
+    y, sr = librosa.load(file_path)
     pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
-
     pitch_values = pitches[magnitudes > np.median(magnitudes)]
-    pitch_variability = np.std(pitch_values)
+    pitch_var = np.std(pitch_values)
     pitch_change_rate = np.mean(np.abs(np.diff(pitch_values)))
+    return pitch_var, pitch_change_rate
 
-    return {
-        'pitch_variability': float(pitch_variability),
-        'pitch_change_rate': float(pitch_change_rate),
-    }
+def generate_expressiveness_plot(pitch_var, reference_df):
+    return create_scatter(reference_df, pitch_var, "pitch_variability", "Expressiveness", "expressiveness")
 
-def generate_expressiveness_plot(pitch_val, reference_df):
+def generate_clarity_plot(pitch_rate, reference_df):
+    return create_scatter(reference_df, pitch_rate, "pitch_change_rate", "Clarity", "clarity")
+
+def create_scatter(reference_df, val, feature_col, score_col, prefix):
     fig, ax = plt.subplots()
-    ax.scatter(reference_df['pitch_variability'], reference_df['Expressiveness'], color='orange')
-    ax.axvline(x=pitch_val, color='red', linestyle='--')
-    ax.set_xlabel("pitch_variability")
-    ax.set_ylabel("Expressiveness")
-    ax.set_title("Expressiveness vs pitch_variability")
-    return fig
+    ax.scatter(reference_df[feature_col], reference_df[score_col], color="orange")
+    ax.axvline(val, color="red", linestyle="dashed")
+    ax.set_xlabel(feature_col)
+    ax.set_ylabel(score_col)
+    ax.set_title(f"{score_col} vs {feature_col}")
 
-def generate_clarity_plot(pitch_change_val, reference_df):
-    fig, ax = plt.subplots()
-    ax.scatter(reference_df['pitch_change_rate'], reference_df['Clarity'], color='orange')
-    ax.axvline(x=pitch_change_val, color='red', linestyle='--')
-    ax.set_xlabel("pitch_change_rate")
-    ax.set_ylabel("Clarity")
-    ax.set_title("Clarity vs pitch_change_rate")
-    return fig
+    filename = f"{prefix}_{uuid.uuid4().hex[:6]}.png"
+    filepath = os.path.join("plots", filename)
+    plt.savefig(filepath, bbox_inches="tight")
+    plt.close()
+    return filename
