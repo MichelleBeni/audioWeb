@@ -1,60 +1,99 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Storytelling Quality</title>
+    <title>Storytelling Analyzer</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            background: #ffeef8;
-            color: #222;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #ffeef8, #fff0f5);
+            color: #333;
             text-align: center;
-            padding: 30px;
+            padding: 40px;
         }
-        .upload-container {
-            margin: 30px auto;
-            padding: 20px;
-            background-color: #fff0f6;
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 25px;
+        }
+
+        .upload-box {
+            background-color: white;
+            padding: 30px;
             border-radius: 15px;
             display: inline-block;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        input[type="file"], input[type="submit"] {
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
             background-color: #ff66a3;
             color: white;
-            border: none;
             padding: 10px 20px;
-            margin: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        #file-name {
             font-size: 14px;
-            border-radius: 5px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: #ff66a3;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
             cursor: pointer;
         }
+
         .results {
             margin-top: 30px;
         }
+
         img {
             max-width: 400px;
             margin: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
-    <h2>Upload a Storytelling Recording</h2>
-    <div class="upload-container">
+    <h1>Upload a Storytelling Recording</h1>
+
+    <div class="upload-box">
         <form action="/analyze" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" required>
+            <label class="file-label" for="file-upload">Choose File</label>
+            <input type="file" id="file-upload" name="file" accept=".wav" required onchange="updateFileName(this)">
+            <div id="file-name">No file selected</div>
             <br>
-            <input type="submit" value="Analyze">
+            <button type="submit">Analyze</button>
         </form>
     </div>
+
     {% if pitch_variability %}
     <div class="results">
         <p><strong>Pitch Variability:</strong> {{ pitch_variability }}</p>
         <p><strong>Pitch Change Rate:</strong> {{ pitch_change_rate }}</p>
-        <h4>Scatter Plots:</h4>
+        <h3>Scatter Plots</h3>
         <img src="{{ plots['expressiveness'] }}" alt="Expressiveness Plot">
         <img src="{{ plots['clarity'] }}" alt="Clarity Plot">
     </div>
     {% endif %}
+
+    <script>
+        function updateFileName(input) {
+            const fileName = input.files[0] ? input.files[0].name : "No file selected";
+            document.getElementById("file-name").textContent = fileName;
+        }
+    </script>
 </body>
 </html>
